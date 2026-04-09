@@ -10,9 +10,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 test – zwracamy losowe zdjęcie
+    // 🔥 TEST – zawsze zwraca zdjęcie
     return res.status(200).json({
-      image: "https://picsum.photos/500/600"
+      image: "https://picsum.photos/500/600?random=" + Math.random()
     });
 
   } catch (e) {

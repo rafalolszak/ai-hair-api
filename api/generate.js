@@ -20,7 +20,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 STYLE
     const styles = [
       "short modern haircut",
       "long wavy hair",
@@ -31,16 +30,16 @@ export default async function handler(req, res) {
 
     const style = styles[Math.floor(Math.random() * styles.length)];
 
-    // 🔥 REQUEST DO OPENAI (BEZ SDK)
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
+    // 🔥 IMAGE EDITING
+    const response = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
         model: "gpt-image-1",
-        prompt: `A realistic photo of a person with ${style}, high quality, natural look`,
+        image: image,
+        prompt: `Edit this image: change ONLY the hairstyle to ${style}. Keep the same face, same person, same lighting, ultra realistic.`,
         size: "1024x1024"
       })
     });
@@ -48,7 +47,7 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!data.data) {
-      return res.status(500).json({ error: "Błąd OpenAI", details: data });
+      return res.status(500).json({ error: "Błąd AI", details: data });
     }
 
     const imageBase64 = data.data[0].b64_json;

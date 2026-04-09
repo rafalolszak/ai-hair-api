@@ -20,28 +20,28 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    const styles = [
-      "short modern haircut",
-      "long wavy hair",
-      "bob haircut",
-      "curly hairstyle",
-      "blonde straight hair"
-    ];
+    // 🔥 base64 → blob
+    const base64Data = image.split(",")[1];
+    const buffer = Buffer.from(base64Data, "base64");
 
-    const style = styles[Math.floor(Math.random() * styles.length)];
+    const formData = new FormData();
+    formData.append("model", "gpt-image-1");
+    formData.append(
+      "image",
+      new Blob([buffer]),
+      "photo.png"
+    );
+    formData.append(
+      "prompt",
+      "Change ONLY hairstyle. Keep same face, same person, ultra realistic."
+    );
 
-    // 🔥 IMAGE EDITING
     const response = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        image: image,
-        prompt: `Edit this image: change ONLY the hairstyle to ${style}. Keep the same face, same person, same lighting, ultra realistic.`,
-        size: "1024x1024"
-      })
+      body: formData
     });
 
     const data = await response.json();

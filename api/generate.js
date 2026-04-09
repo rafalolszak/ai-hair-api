@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const result = await client.images.generate({
       model: "gpt-image-1",
       prompt: "Modern hairstyle, realistic person, studio photo",
-      size: "512x512"
+      size: "1024x1024"
     });
 
     return res.status(200).json({

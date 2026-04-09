@@ -33,19 +33,39 @@ export default async function handler(req, res) {
 
     const buffer = Buffer.concat(chunks);
 
-    // 🔥 KONWERSJA DO BLOB (KLUCZOWE)
-    const blob = new Blob([buffer]);
+    // 👉 KONWERSJA NA BASE64
+    const base64 = buffer.toString("base64");
 
-    const result = await client.images.edit({
-      model: "gpt-image-1",
-      image: blob,
-      prompt:
-        "Change the hairstyle of the person to a modern haircut, keep the same face, realistic, high quality",
-      size: "1024x1024",
+    const result = await client.responses.create({
+      model: "gpt-4.1-mini", // 🔥 ważne – działa z obrazami
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "Change ONLY the hairstyle, keep same face, realistic photo",
+            },
+            {
+              type: "input_image",
+              image_base64: base64,
+            },
+          ],
+        },
+      ],
     });
 
+    // 👉 WYCIĄGANIE OBRAZU
+    const image = result.output[0]?.content?.find(
+      (c) => c.type === "output_image"
+    );
+
+    if (!image) {
+      throw new Error("Brak obrazu w odpowiedzi AI");
+    }
+
     return res.status(200).json({
-      image: `data:image/png;base64,${result.data[0].b64_json}`,
+      image: `data:image/png;base64,${image.image_base64}`,
     });
 
   } catch (err) {

@@ -10,16 +10,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { image } = req.body;
+    const body = req.body;
 
-    if (!image) {
+    console.log("BODY:", body);
+
+    if (!body || !body.image) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
+    // 🔥 TEST OPENAI
     const result = await client.images.generate({
       model: "gpt-image-1",
-      prompt: "Realistyczna osoba z nową fryzurą, różne style włosów",
-      size: "1024x1024"
+      prompt: "Modern hairstyle, realistic person, studio photo",
+      size: "512x512"
     });
 
     return res.status(200).json({
@@ -27,7 +30,11 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Błąd AI" });
+    console.error("ERROR:", err);
+
+    return res.status(500).json({
+      error: "Błąd AI",
+      details: err.message
+    });
   }
 }

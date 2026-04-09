@@ -1,40 +1,26 @@
 export default async function handler(req, res) {
   try {
-    const { image } = req.body;
+    const body = typeof req.body === "string"
+      ? JSON.parse(req.body)
+      : req.body;
+
+    const image = body.image;
 
     if (!image) {
-      return res.status(400).json({ error: "Brak zdjęcia" });
+      return res.status(400).json({ error: "No image provided" });
     }
 
-    const response = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt: "Different modern hairstyle, realistic, same person",
-        image: image,
-        size: "1024x1024"
-      })
+    // 🔥 TESTOWY OBRAZ (żeby sprawdzić czy działa)
+    return res.status(200).json({
+      image: "https://picsum.photos/400/500"
     });
 
-    const data = await response.json();
-
-    res.status(200).json({
-      image: data.data?.[0]?.url
+  } catch (e) {
+    return res.status(500).json({
+      error: e.message
     });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 }
-      const data = await response.json();
-      results.push(data.data[0].b64_json);
-    }
-
-    res.status(200).json({ images: results });
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

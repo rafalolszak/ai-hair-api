@@ -10,6 +10,7 @@ export const config = {
 
 export default async function handler(req, res) {
 
+  // ✅ CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -29,21 +30,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // base64 → buffer
+    // 🔥 base64 → buffer
     const base64Data = image.split(",")[1];
     const buffer = Buffer.from(base64Data, "base64");
 
+    // 🔥 form-data (Node version)
     const formData = new FormData();
     formData.append("model", "gpt-image-1");
     formData.append("image", buffer, {
       filename: "photo.png",
       contentType: "image/png",
     });
+
     formData.append(
       "prompt",
-      "Change ONLY hairstyle. Keep same face, same person. Ultra realistic."
+      "Change ONLY hairstyle. Keep same face, same person, same lighting, ultra realistic, different hairstyle."
     );
 
+    // 🔥 request do OpenAI
     const response = await fetch(
       "https://api.openai.com/v1/images/edits",
       {
@@ -58,10 +62,26 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (!data.data) {
-      return res.status(500).json({ error: "Błąd AI", details: data });
+    // 🔥 DEBUG (zobaczysz w logach)
+    console.log("OPENAI RESPONSE:", JSON.stringify(data));
+
+    // ❌ jeśli OpenAI zwróci błąd
+    if (!response.ok) {
+      return res.status(500).json({
+        error: "OpenAI error",
+        details: data,
+      });
     }
 
+    // ❌ jeśli brak obrazu
+    if (!data.data || !data.data[0]) {
+      return res.status(500).json({
+        error: "Brak obrazu",
+        details: data,
+      });
+    }
+
+    // ✅ sukces
     const imageBase64 = data.data[0].b64_json;
 
     return res.status(200).json({
@@ -69,6 +89,8 @@ export default async function handler(req, res) {
     });
 
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({
+      error: e.message,
+    });
   }
 }

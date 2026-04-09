@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 export const config = {
   api: {
-    bodyParser: false, // 🔥 potrzebne do uploadu pliku
+    bodyParser: false,
   },
 };
 
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   // ✅ CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "*");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -33,12 +33,14 @@ export default async function handler(req, res) {
 
     const buffer = Buffer.concat(chunks);
 
-    // 🔥 wysyłamy obraz bezpośrednio do OpenAI
+    // 🔥 KONWERSJA DO BLOB (KLUCZOWE)
+    const blob = new Blob([buffer]);
+
     const result = await client.images.edit({
       model: "gpt-image-1",
-      image: buffer,
+      image: blob,
       prompt:
-        "Change the hairstyle of the person to a modern stylish haircut, keep the same face, realistic, natural lighting, high quality",
+        "Change the hairstyle of the person to a modern haircut, keep the same face, realistic, high quality",
       size: "1024x1024",
     });
 
@@ -47,7 +49,7 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err);
     return res.status(500).json({ error: err.message });
   }
 }

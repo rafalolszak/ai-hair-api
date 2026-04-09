@@ -2,39 +2,33 @@ export default async function handler(req, res) {
   try {
     const { image } = req.body;
 
-    const styles = [
-      "short bob haircut",
-      "long wavy hair",
-      "curly hairstyle"
-    ];
+    if (!image) {
+      return res.status(400).json({ error: "Brak zdjęcia" });
+    }
 
-    const results = [];
+    const response = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt: "Different modern hairstyle, realistic, same person",
+        image: image,
+        size: "1024x1024"
+      })
+    });
 
-    for (let style of styles) {
-      const response = await fetch("https://api.openai.com/v1/images/edits", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: (() => {
-          const formData = new FormData();
+    const data = await response.json();
 
-          const base64Data = image.split(",")[1];
-          const buffer = Buffer.from(base64Data, "base64");
+    res.status(200).json({
+      image: data.data?.[0]?.url
+    });
 
-          formData.append("image", new Blob([buffer]), "photo.png");
-
-          formData.append(
-            "prompt",
-            `Change hairstyle to ${style}, keep same face, same person, realistic`
-          );
-
-          formData.append("model", "gpt-image-1");
-
-          return formData;
-        })()
-      });
-
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
       const data = await response.json();
       results.push(data.data[0].b64_json);
     }

@@ -5,20 +5,27 @@ const client = new OpenAI({
 });
 
 export default async function handler(req, res) {
+  // 🔥 CORS HEADERS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // 🔥 OBSŁUGA OPTIONS (NAJWAŻNIEJSZE)
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
   try {
-    const body = req.body;
+    const { image } = req.body;
 
-    console.log("BODY:", body);
-
-    if (!body || !body.image) {
+    if (!image) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 TEST OPENAI
     const result = await client.images.generate({
       model: "gpt-image-1",
       prompt: "Modern hairstyle, realistic person, studio photo",
@@ -30,11 +37,7 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error("ERROR:", err);
-
-    return res.status(500).json({
-      error: "Błąd AI",
-      details: err.message
-    });
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
 }

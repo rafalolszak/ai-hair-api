@@ -1,16 +1,16 @@
+import formidable from "formidable";
+import fs from "fs";
 import FormData from "form-data";
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: "10mb",
-    },
+    bodyParser: false,
   },
 };
 
 export default async function handler(req, res) {
 
-  // ✅ CORS
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -23,74 +23,63 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Only POST allowed" });
   }
 
-  try {
-    const { image } = req.body;
+  const form = formidable();
 
-    if (!image) {
-      return res.status(400).json({ error: "Brak zdjęcia" });
-    }
+  form.parse(req, async (err, fields, files) => {
+    try {
+      if (err) {
+        return res.status(500).json({ error: "Upload error" });
+      }
 
-    // 🔥 base64 → buffer
-    const base64Data = image.split(",")[1];
-    const buffer = Buffer.from(base64Data, "base64");
+      const file = files.image;
 
-    // 🔥 form-data (Node version)
-    const formData = new FormData();
-    formData.append("model", "gpt-image-1");
-    formData.append("image", buffer, {
-      filename: "photo.png",
-      contentType: "image/png",
-    });
+      if (!file) {
+        return res.status(400).json({ error: "Brak zdjęcia" });
+      }
 
-    formData.append(
-      "prompt",
-      "Change ONLY hairstyle. Keep same face, same person, same lighting, ultra realistic, different hairstyle."
-    );
+      // 🔥 odczyt pliku
+      const buffer = fs.readFileSync(file.filepath);
 
-    // 🔥 request do OpenAI
-    const response = await fetch(
-      "https://api.openai.com/v1/images/edits",
-      {
+      const formData = new FormData();
+      formData.append("model", "gpt-image-1");
+
+      formData.append("image", buffer, {
+        filename: "photo.png",
+        contentType: "image/png",
+      });
+
+      formData.append(
+        "prompt",
+        "Change ONLY hairstyle. Keep same face, same person, ultra realistic hairstyle."
+      );
+
+      // 🔥 request do OpenAI
+      const response = await fetch("https://api.openai.com/v1/images/edits", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
           ...formData.getHeaders(),
         },
         body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(500).json({
+          error: "OpenAI error",
+          details: data,
+        });
       }
-    );
 
-    const data = await response.json();
+      const imageBase64 = data.data[0].b64_json;
 
-    // 🔥 DEBUG (zobaczysz w logach)
-    console.log("OPENAI RESPONSE:", JSON.stringify(data));
-
-    // ❌ jeśli OpenAI zwróci błąd
-    if (!response.ok) {
-      return res.status(500).json({
-        error: "OpenAI error",
-        details: data,
+      return res.status(200).json({
+        image: `data:image/png;base64,${imageBase64}`,
       });
+
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
     }
-
-    // ❌ jeśli brak obrazu
-    if (!data.data || !data.data[0]) {
-      return res.status(500).json({
-        error: "Brak obrazu",
-        details: data,
-      });
-    }
-
-    // ✅ sukces
-    const imageBase64 = data.data[0].b64_json;
-
-    return res.status(200).json({
-      image: `data:image/png;base64,${imageBase64}`,
-    });
-
-  } catch (e) {
-    return res.status(500).json({
-      error: e.message,
-    });
-  }
+  });
 }

@@ -1,11 +1,16 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 export default async function handler(req, res) {
 
-  // 🔥 CORS HEADERS
+  // ✅ CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // 🔥 OBSŁUGA OPTIONS (NAJWAŻNIEJSZE)
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -21,12 +26,32 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 testowy obraz (na razie)
+    // 🔥 LISTA FRYZUR
+    const styles = [
+      "short modern haircut",
+      "long wavy hair",
+      "bob haircut",
+      "curly hairstyle",
+      "blonde straight hair"
+    ];
+
+    const style = styles[Math.floor(Math.random() * styles.length)];
+
+    // 🔥 GENEROWANIE OBRAZU
+    const response = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: `A realistic photo of a person with ${style}, natural lighting, high quality`,
+      size: "1024x1024"
+    });
+
+    const imageBase64 = response.data[0].b64_json;
+
     return res.status(200).json({
-      image: "https://picsum.photos/500/600"
+      image: `data:image/png;base64,${imageBase64}`
     });
 
   } catch (e) {
+    console.error(e);
     return res.status(500).json({ error: e.message });
   }
 }

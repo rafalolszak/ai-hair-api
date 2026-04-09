@@ -1,36 +1,33 @@
 export default async function handler(req, res) {
   try {
+    // 🔥 ręczne pobranie body (Vercel często psuje req.body)
+    const buffers = [];
 
-    let body = req.body;
-
-    // 🔥 jeśli body nie istnieje — próbujemy ręcznie
-    if (!body || Object.keys(body).length === 0) {
-      try {
-        const chunks = [];
-        for await (const chunk of req) {
-          chunks.push(chunk);
-        }
-        const raw = Buffer.concat(chunks).toString();
-
-        if (raw) {
-          body = JSON.parse(raw);
-        }
-      } catch (e) {
-        body = {};
-      }
+    for await (const chunk of req) {
+      buffers.push(chunk);
     }
 
-    const image = body?.image;
+    const data = Buffer.concat(buffers).toString();
 
-    if (!image) {
+    if (!data) {
       return res.status(400).json({
-        error: "Brak image w body"
+        error: "Brak body"
       });
     }
 
-    // 🔥 TEST
+    const body = JSON.parse(data);
+
+    const image = body.image;
+
+    if (!image) {
+      return res.status(400).json({
+        error: "Brak image"
+      });
+    }
+
+    // 🔥 TEST — zawsze zwraca obraz
     return res.status(200).json({
-      image: "https://picsum.photos/400/500"
+      image: "https://picsum.photos/400/500?random=" + Math.random()
     });
 
   } catch (e) {

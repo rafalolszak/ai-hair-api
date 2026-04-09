@@ -1,12 +1,6 @@
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export default async function handler(req, res) {
 
-  // ✅ CORS
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -26,7 +20,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 LISTA FRYZUR
+    // 🔥 STYLE
     const styles = [
       "short modern haircut",
       "long wavy hair",
@@ -37,21 +31,33 @@ export default async function handler(req, res) {
 
     const style = styles[Math.floor(Math.random() * styles.length)];
 
-    // 🔥 GENEROWANIE OBRAZU
-    const response = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: `A realistic photo of a person with ${style}, natural lighting, high quality`,
-      size: "1024x1024"
+    // 🔥 REQUEST DO OPENAI (BEZ SDK)
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt: `A realistic photo of a person with ${style}, high quality, natural look`,
+        size: "1024x1024"
+      })
     });
 
-    const imageBase64 = response.data[0].b64_json;
+    const data = await response.json();
+
+    if (!data.data) {
+      return res.status(500).json({ error: "Błąd OpenAI", details: data });
+    }
+
+    const imageBase64 = data.data[0].b64_json;
 
     return res.status(200).json({
       image: `data:image/png;base64,${imageBase64}`
     });
 
   } catch (e) {
-    console.error(e);
     return res.status(500).json({ error: e.message });
   }
 }

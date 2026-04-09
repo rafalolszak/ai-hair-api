@@ -1,6 +1,15 @@
+import FormData from "form-data";
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
 export default async function handler(req, res) {
 
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -20,29 +29,32 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
 
-    // 🔥 base64 → blob
+    // base64 → buffer
     const base64Data = image.split(",")[1];
     const buffer = Buffer.from(base64Data, "base64");
 
     const formData = new FormData();
     formData.append("model", "gpt-image-1");
-    formData.append(
-      "image",
-      new Blob([buffer]),
-      "photo.png"
-    );
+    formData.append("image", buffer, {
+      filename: "photo.png",
+      contentType: "image/png",
+    });
     formData.append(
       "prompt",
-      "Change ONLY hairstyle. Keep same face, same person, ultra realistic."
+      "Change ONLY hairstyle. Keep same face, same person. Ultra realistic."
     );
 
-    const response = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: formData
-    });
+    const response = await fetch(
+      "https://api.openai.com/v1/images/edits",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          ...formData.getHeaders(),
+        },
+        body: formData,
+      }
+    );
 
     const data = await response.json();
 
@@ -53,7 +65,7 @@ export default async function handler(req, res) {
     const imageBase64 = data.data[0].b64_json;
 
     return res.status(200).json({
-      image: `data:image/png;base64,${imageBase64}`
+      image: `data:image/png;base64,${imageBase64}`,
     });
 
   } catch (e) {

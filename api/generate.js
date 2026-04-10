@@ -5,7 +5,7 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  // CORS (Shopify!)
+  // ✅ CORS (Shopify)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -19,24 +19,39 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { image, hairstyle } = req.body;
+    // 🔥 zabezpieczenie przed undefined
+    const body = req.body || {};
+
+    const image = body.image;
+    const hairstyle = body.hairstyle || "short modern haircut";
 
     if (!image) {
-      return res.status(400).json({ error: "No image" });
+      return res.status(400).json({ error: "No image received" });
     }
 
+    console.log("Request received");
+
     const prompt = `
-    Change ONLY the hairstyle of the person.
-    Keep same face, identity and lighting.
+    Change ONLY the hairstyle of the person in this image.
+
+    Keep:
+    - same face
+    - same identity
+    - same lighting
+    - same background
 
     Hairstyle: ${hairstyle}
 
-    Ultra realistic, natural hair, no face distortion.
+    Requirements:
+    - ultra realistic
+    - natural hair texture
+    - no face distortion
+    - high quality salon result
     `;
 
     const response = await openai.images.edit({
       model: "gpt-image-1",
-      image: image,
+      image: image, // base64 (bez data:image/png;base64,)
       prompt: prompt,
       size: "1024x1024"
     });
@@ -44,15 +59,16 @@ export default async function handler(req, res) {
     const result = response.data[0].b64_json;
 
     return res.status(200).json({
+      success: true,
       image: `data:image/png;base64,${result}`
     });
 
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("ERROR:", error);
 
     return res.status(500).json({
       error: "Generation failed",
-      details: err.message
+      details: error.message
     });
   }
 }

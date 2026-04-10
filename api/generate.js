@@ -24,40 +24,15 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = await openai.responses.create({
-      model: "gpt-4.1",
-      modalities: ["image"],
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `Edit this photo: change hairstyle to ${style}. Keep same face.`
-            },
-            {
-              type: "input_image",
-              image_url: image // 🔥 MUSI być URL, NIE base64
-            }
-          ]
-        }
-      ]
-    });
-
-    const imageBase64 = response.output
-      ?.flatMap(o => o.content || [])
-      ?.find(c => c.type === "output_image")
-      ?.image_base64;
-
-    if (!imageBase64) {
-      console.error("BRAK OBRAZU:", JSON.stringify(response, null, 2));
-      return res.status(500).json({
-        error: "AI nie zwróciło obrazu"
-      });
-    }
+    const response = await openai.createImageEdit(
+      image, // 🔥 URL lub plik
+      `Change hairstyle to ${style}, keep same face, realistic`,
+      1,
+      "1024x1024"
+    );
 
     return res.status(200).json({
-      image: `data:image/png;base64,${imageBase64}`
+      image: response.data.data[0].url
     });
 
   } catch (err) {

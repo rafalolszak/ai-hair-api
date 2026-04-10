@@ -1,4 +1,6 @@
 {
+  "name": "ai-hair-api",
+  "version": "1.0.0",
   "type": "module",
   "dependencies": {
     "replicate": "^1.0.1"

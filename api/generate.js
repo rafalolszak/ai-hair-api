@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
+  // CORS (Shopify)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -15,6 +16,8 @@ export default async function handler(req, res) {
 
   try {
     const { image, style } = req.body;
+
+    console.log("REQUEST:", { style });
 
     if (!image) {
       return res.status(400).json({ error: "Brak zdjęcia" });
@@ -32,7 +35,7 @@ export default async function handler(req, res) {
           content: [
             {
               type: "input_text",
-              text: `Change hairstyle to ${style}. Keep same face, realistic photo.`
+              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
             },
             {
               type: "input_image",
@@ -43,23 +46,35 @@ export default async function handler(req, res) {
       ]
     });
 
-    // 🔥 fallback — czasem obraz jest w innym miejscu
-    const content = response.output[0].content;
+    // 🔥 SZUKAMY OBRAZU W ODPOWIEDZI (odporne na błędy)
+    let image_base64 = null;
 
-    const imageObj = content.find(c => c.type === "output_image");
+    for (const item of response.output) {
+      if (item.content) {
+        for (const c of item.content) {
+          if (c.type === "output_image" && c.image_base64) {
+            image_base64 = c.image_base64;
+          }
+        }
+      }
+    }
 
-    if (!imageObj) {
-      return res.status(500).json({ error: "Brak obrazu w odpowiedzi" });
+    if (!image_base64) {
+      console.error("BRAK OBRAZU:", JSON.stringify(response, null, 2));
+      return res.status(500).json({
+        error: "AI nie zwróciło obrazu"
+      });
     }
 
     return res.status(200).json({
-      image: `data:image/png;base64,${imageObj.image_base64}`
+      image: `data:image/png;base64,${image_base64}`
     });
 
   } catch (err) {
     console.error("ERROR:", err);
+
     return res.status(500).json({
-      error: err.message
+      error: err.message || "Server error"
     });
   }
 }

@@ -1,20 +1,14 @@
 import OpenAI from "openai";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-const client = new OpenAI({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
-  // ✅ CORS
+  // ✅ CORS (Shopify tego potrzebuje)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -25,51 +19,57 @@ export default async function handler(req, res) {
   }
 
   try {
-    const chunks = [];
+    const { image, hairstyle } = req.body;
 
-    for await (const chunk of req) {
-      chunks.push(chunk);
+    // 🔍 Walidacja
+    if (!image) {
+      return res.status(400).json({ error: "No image provided" });
     }
 
-    const buffer = Buffer.concat(chunks);
+    if (!hairstyle) {
+      return res.status(400).json({ error: "No hairstyle provided" });
+    }
 
-    // 👉 KONWERSJA NA BASE64
-    const base64 = buffer.toString("base64");
+    // 🎯 Prompt (KLUCZ DO JAKOŚCI)
+    const prompt = `
+    Change ONLY the hairstyle of the person in this image.
 
-    const result = await client.responses.create({
-      model: "gpt-4.1-mini", // 🔥 ważne – działa z obrazami
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: "Change ONLY the hairstyle, keep same face, realistic photo",
-            },
-            {
-              type: "input_image",
-              image_base64: base64,
-            },
-          ],
-        },
-      ],
+    Keep:
+    - same face
+    - same identity
+    - same lighting
+    - same background
+
+    New hairstyle: ${hairstyle}
+
+    Requirements:
+    - ultra realistic
+    - natural hair texture
+    - no face distortion
+    - high quality salon result
+    `;
+
+    // 🚀 OpenAI image edit
+    const response = await openai.images.edit({
+      model: "gpt-image-1",
+      image: image, // base64 (bez data:image)
+      prompt: prompt,
+      size: "1024x1024"
     });
 
-    // 👉 WYCIĄGANIE OBRAZU
-    const image = result.output[0]?.content?.find(
-      (c) => c.type === "output_image"
-    );
-
-    if (!image) {
-      throw new Error("Brak obrazu w odpowiedzi AI");
-    }
+    const result = response.data[0].b64_json;
 
     return res.status(200).json({
-      image: `data:image/png;base64,${image.image_base64}`,
+      success: true,
+      image: `data:image/png;base64,${result}`
     });
 
-  } catch (err) {
-    console.error("ERROR:", err);
-    return res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("ERROR:", error);
+
+    return res.status(500).json({
+      error: "Generation failed",
+      details: error.message
+    });
   }
 }

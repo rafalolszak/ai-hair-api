@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -25,14 +24,13 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // 🔥 KONWERSJA BASE64 → BUFFER
     const base64Data = image.split(",")[1];
     const buffer = Buffer.from(base64Data, "base64");
 
     const result = await openai.images.edit({
       model: "gpt-image-1",
-      prompt: `Change hairstyle to ${style}. Keep same face, realistic photo.`,
       image: buffer,
+      prompt: `Change hairstyle to ${style}. Keep same face, realistic photo.`,
       size: "1024x1024"
     });
 

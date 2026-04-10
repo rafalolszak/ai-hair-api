@@ -25,14 +25,29 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const result = await openai.images.edit({
-  model: "dall-e-2",
-  prompt: `Realistic hairstyle: ${style}. Keep same face, same person.`,
-  image: image
-});
+    const response = await openai.responses.create({
+      model: "gpt-image-1",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
+            },
+            {
+              type: "input_image",
+              image: image
+            }
+          ]
+        }
+      ]
+    });
+
+    const image_base64 = response.output[0].content[0].image_base64;
 
     return res.status(200).json({
-      image: result.data[0].url
+      image: `data:image/png;base64,${image_base64}`
     });
 
   } catch (err) {

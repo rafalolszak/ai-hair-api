@@ -24,15 +24,15 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = await openai.createImageEdit(
-      image, // 🔥 URL lub plik
-      `Change hairstyle to ${style}, keep same face, realistic`,
-      1,
-      "1024x1024"
-    );
+    // 🔥 GENERUJEMY NOWY OBRAZ NA PODSTAWIE PROMPTU
+    const result = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: `A realistic photo of a person with hairstyle ${style}, similar to this person: ${image}`,
+      size: "1024x1024"
+    });
 
     return res.status(200).json({
-      image: response.data.data[0].url
+      image: result.data[0].url
     });
 
   } catch (err) {

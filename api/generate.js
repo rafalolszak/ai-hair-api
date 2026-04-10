@@ -26,25 +26,24 @@ export default async function handler(req, res) {
 
     const response = await openai.responses.create({
       model: "gpt-4.1",
-      modalities: ["image"], // 🔥 KLUCZOWE
+      modalities: ["image"],
       input: [
         {
           role: "user",
           content: [
             {
               type: "input_text",
-              text: `Edit this photo: change hairstyle to ${style}. Keep same face, realistic.`
+              text: `Edit this photo: change hairstyle to ${style}. Keep same face.`
             },
             {
               type: "input_image",
-              image_url: image
+              image_url: image // 🔥 MUSI być URL, NIE base64
             }
           ]
         }
       ]
     });
 
-    // 🔥 WYCIĄGANIE OBRAZU
     const imageBase64 = response.output
       ?.flatMap(o => o.content || [])
       ?.find(c => c.type === "output_image")

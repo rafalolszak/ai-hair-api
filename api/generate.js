@@ -32,7 +32,7 @@ export default async function handler(req, res) {
           content: [
             {
               type: "input_text",
-              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
+              text: `Change hairstyle to ${style}. Keep same face, realistic photo.`
             },
             {
               type: "input_image",
@@ -40,15 +40,20 @@ export default async function handler(req, res) {
             }
           ]
         }
-      ],
-      // 🔥 TO GENERUJE OBRAZ
-      modalities: ["image"],
+      ]
     });
 
-    const image_base64 = response.output[0].content[0].image_base64;
+    // 🔥 fallback — czasem obraz jest w innym miejscu
+    const content = response.output[0].content;
+
+    const imageObj = content.find(c => c.type === "output_image");
+
+    if (!imageObj) {
+      return res.status(500).json({ error: "Brak obrazu w odpowiedzi" });
+    }
 
     return res.status(200).json({
-      image: `data:image/png;base64,${image_base64}`
+      image: `data:image/png;base64,${imageObj.image_base64}`
     });
 
   } catch (err) {

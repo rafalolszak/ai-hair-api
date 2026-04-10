@@ -8,7 +8,7 @@ const client = new OpenAI({
 export default async function handler(req, res) {
   try {
     // 🔥 URL NA STAŁE (najprościej)
-    const imageUrl = "https://images.unsplash.com/photo-1594824475317-3f3d7a8c3b0d";
+    const imageUrl = "https://stylistkaoprawokularowych.pl/wp-content/uploads/2022/10/twarz_okragla-768x1024.jpg";
 
     // Pobierz obraz
     const response = await fetch(imageUrl);

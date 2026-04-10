@@ -1,45 +1,55 @@
 import OpenAI from "openai";
+import formidable from "formidable";
+import fs from "fs";
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { image, style } = req.body;
+    const form = new formidable.IncomingForm();
 
-    if (!image) {
-      return res.status(400).json({ error: "Brak zdjęcia" });
-    }
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        return res.status(500).json({ error: "Upload error" });
+      }
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+      const style = fields.style;
+      const file = files.image;
 
-    // 🔥 GENERUJEMY NOWY OBRAZ NA PODSTAWIE PROMPTU
-    const result = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: `A realistic photo of a person with hairstyle ${style}, similar to this person: ${image}`,
-      size: "1024x1024"
-    });
+      if (!file) {
+        return res.status(400).json({ error: "Brak zdjęcia" });
+      }
 
-    return res.status(200).json({
-      image: result.data[0].url
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
+      const response = await openai.images.edits({
+        model: "gpt-image-1",
+        prompt: `Change hairstyle to ${style}. Keep same face, realistic.`,
+        image: [
+          fs.createReadStream(file.filepath) // 🔥 KLUCZ
+        ],
+        size: "1024x1024"
+      });
+
+      return res.status(200).json({
+        image: response.data[0].b64_json
+          ? `data:image/png;base64,${response.data[0].b64_json}`
+          : response.data[0].url
+      });
     });
 
   } catch (err) {
-    console.error("ERROR:", err);
-
-    return res.status(500).json({
-      error: err.message
-    });
+    console.error(err);
+    return res.status(500).json({ error: err.message });
   }
 }

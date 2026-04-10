@@ -26,10 +26,10 @@ export default async function handler(req, res) {
     });
 
     const result = await openai.images.edit({
-      model: "gpt-image-1",
-      prompt: `Realistic hairstyle: ${style}. Keep same face, same person, natural look.`,
-      image: image
-    });
+  model: "dall-e-2",
+  prompt: `Realistic hairstyle: ${style}. Keep same face, same person.`,
+  image: image
+});
 
     return res.status(200).json({
       image: result.data[0].url

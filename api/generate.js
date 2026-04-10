@@ -28,11 +28,11 @@ export default async function handler(req, res) {
           content: [
             {
               type: "input_text",
-              text: `Change ONLY the hairstyle to: ${hairstyle}. Keep the same face, identity and lighting. Make it ultra realistic.`
+              text: `Change ONLY the hairstyle to: ${hairstyle}. Keep same face and identity. Ultra realistic.`
             },
             {
               type: "input_image",
-              image_url: image // 🔥 działa z base64!
+              image_url: image
             }
           ]
         }
@@ -40,7 +40,18 @@ export default async function handler(req, res) {
       modalities: ["image"]
     });
 
-    const imageBase64 = response.output[0].content[0].image_base64;
+    // 🔥 BEZPIECZNE WYCIĄGANIE OBRAZU
+    const imageBase64 = response.output
+      ?.find(item => item.type === "message")
+      ?.content?.find(c => c.type === "output_image")
+      ?.image_base64;
+
+    if (!imageBase64) {
+      console.log("FULL RESPONSE:", JSON.stringify(response, null, 2));
+      return res.status(500).json({
+        error: "No image generated"
+      });
+    }
 
     res.status(200).json({
       image: `data:image/png;base64,${imageBase64}`

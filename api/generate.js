@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  // CORS (ważne dla Shopify)
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -25,15 +25,14 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = await openai.images.generate({
+    const result = await openai.images.edit({
       model: "gpt-image-1",
-      prompt: `Change hairstyle to ${style}. Keep same face.`,
-      image: image,
-      size: "1024x1024"
+      prompt: `Realistic hairstyle: ${style}. Keep same face, same person, natural look.`,
+      image: image
     });
 
     return res.status(200).json({
-      image: response.data[0].url
+      image: result.data[0].url
     });
 
   } catch (err) {

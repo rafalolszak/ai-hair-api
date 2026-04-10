@@ -5,7 +5,6 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req, res) {
-  // ✅ CORS (Shopify)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -19,56 +18,43 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 🔥 zabezpieczenie przed undefined
-    const body = req.body || {};
-
-    const image = body.image;
-    const hairstyle = body.hairstyle || "short modern haircut";
+    const { image, hairstyle } = req.body;
 
     if (!image) {
-      return res.status(400).json({ error: "No image received" });
+      return res.status(400).json({ error: "No image" });
     }
 
-    console.log("Request received");
+    // 🔥 konwersja base64 → buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, "base64");
 
     const prompt = `
-    Change ONLY the hairstyle of the person in this image.
-
-    Keep:
-    - same face
-    - same identity
-    - same lighting
-    - same background
+    Change ONLY the hairstyle.
+    Keep same face, identity and lighting.
 
     Hairstyle: ${hairstyle}
 
-    Requirements:
-    - ultra realistic
-    - natural hair texture
-    - no face distortion
-    - high quality salon result
+    Ultra realistic, no face distortion.
     `;
 
     const response = await openai.images.edit({
       model: "gpt-image-1",
-      image: image, // base64 (bez data:image/png;base64,)
+      image: buffer, // 🔥 TERAZ JEST POPRAWNIE
       prompt: prompt,
       size: "1024x1024"
     });
 
     const result = response.data[0].b64_json;
 
-    return res.status(200).json({
-      success: true,
+    res.status(200).json({
       image: `data:image/png;base64,${result}`
     });
 
-  } catch (error) {
-    console.error("ERROR:", error);
+  } catch (err) {
+    console.error(err);
 
-    return res.status(500).json({
-      error: "Generation failed",
-      details: error.message
+    res.status(500).json({
+      error: err.message
     });
   }
 }

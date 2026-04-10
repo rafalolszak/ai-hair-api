@@ -16,8 +16,6 @@ export default async function handler(req, res) {
   try {
     const { image, style } = req.body;
 
-    console.log("REQUEST:", { style });
-
     if (!image) {
       return res.status(400).json({ error: "Brak zdjęcia" });
     }
@@ -26,18 +24,41 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const result = await openai.images.generate({
-      model: "gpt-image-1",
-      prompt: `Change hairstyle to ${style}. Keep same face, realistic photo.`,
-      
-      // 🔥 KLUCZOWA ZMIANA
-      image: [image],  // ⬅️ musi być tablica
-      
-      size: "1024x1024"
+    const response = await openai.responses.create({
+      model: "gpt-4.1",
+      modalities: ["image"], // 🔥 KLUCZOWE
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Edit this photo: change hairstyle to ${style}. Keep same face, realistic.`
+            },
+            {
+              type: "input_image",
+              image_url: image
+            }
+          ]
+        }
+      ]
     });
 
+    // 🔥 WYCIĄGANIE OBRAZU
+    const imageBase64 = response.output
+      ?.flatMap(o => o.content || [])
+      ?.find(c => c.type === "output_image")
+      ?.image_base64;
+
+    if (!imageBase64) {
+      console.error("BRAK OBRAZU:", JSON.stringify(response, null, 2));
+      return res.status(500).json({
+        error: "AI nie zwróciło obrazu"
+      });
+    }
+
     return res.status(200).json({
-      image: result.data[0].url
+      image: `data:image/png;base64,${imageBase64}`
     });
 
   } catch (err) {

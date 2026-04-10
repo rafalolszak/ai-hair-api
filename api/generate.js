@@ -24,18 +24,31 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const base64Data = image.split(",")[1];
-    const buffer = Buffer.from(base64Data, "base64");
-
-    const result = await openai.images.edit({
-      model: "gpt-image-1",
-      image: buffer,
-      prompt: `Change hairstyle to ${style}. Keep same face, realistic photo.`,
-      size: "1024x1024"
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
+            },
+            {
+              type: "input_image",
+              image_url: image
+            }
+          ]
+        }
+      ],
+      // 🔥 TO GENERUJE OBRAZ
+      modalities: ["image"],
     });
 
+    const image_base64 = response.output[0].content[0].image_base64;
+
     return res.status(200).json({
-      image: `data:image/png;base64,${result.data[0].b64_json}`
+      image: `data:image/png;base64,${image_base64}`
     });
 
   } catch (err) {

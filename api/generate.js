@@ -25,29 +25,17 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = await openai.responses.create({
+    const result = await openai.images.generate({
       model: "gpt-image-1",
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
-            },
-            {
-              type: "input_image",
-              image_url: image   // 🔥 TU BYŁ BŁĄD
-            }
-          ]
-        }
-      ]
+      prompt: `Change hairstyle to ${style}. Keep same face, realistic photo.`,
+      image: image, // base64 działa tutaj
+      size: "1024x1024"
     });
 
-    const image_base64 = response.output[0].content[0].image_base64;
-
     return res.status(200).json({
-      image: `data:image/png;base64,${image_base64}`
+      image: result.data[0].b64_json
+        ? `data:image/png;base64,${result.data[0].b64_json}`
+        : result.data[0].url
     });
 
   } catch (err) {

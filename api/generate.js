@@ -1,10 +1,8 @@
-import OpenAI from "openai";
-import { IncomingForm } from "formidable";
-import fs from "fs";
+import OpenAI, { toFile } from "openai";
 
 export const config = {
   api: {
-    bodyParser: false, // 🔥 potrzebne dla formidable
+    bodyParser: false,
   },
 };
 
@@ -23,48 +21,65 @@ export default async function handler(req, res) {
   }
 
   try {
-    const form = new IncomingForm();
+    // 🔥 pobieramy dane z FormData (BEZ formidable)
+    const formData = await req.formData();
 
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error("FORM ERROR:", err);
-        return res.status(500).json({ error: "Upload error" });
-      }
+    const file = formData.get("image");
+    const style = formData.get("style") || "modern hairstyle";
 
-      const style = fields.style || "modern hairstyle";
-      const file = files.image?.[0];
+    if (!file) {
+      return res.status(400).json({ error: "Brak pliku" });
+    }
 
-      if (!file) {
-        return res.status(400).json({ error: "Brak zdjęcia" });
-      }
+    // 🔥 konwersja na buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+    // 🔥 kluczowe — toFile
+    const imageFile = await toFile(buffer, "image.png", {
+      type: file.type || "image/png",
+    });
 
-      // 🔥 czytamy plik
-      const imageBuffer = fs.readFileSync(file.filepath);
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
-      // 🔥 NAJWAŻNIEJSZE — poprawne wywołanie API
-      const response = await openai.images.edit({
-        model: "gpt-image-1",
-        prompt: `Change hairstyle to ${style}. Keep the same face and identity.`,
-        image: [imageBuffer],
-        size: "1024x1024"
-      });
+    // 🔥 EDYCJA OBRAZU
+    const response = await openai.images.edit({
+      model: "gpt-image-1.5",
+      image: [imageFile],
+      prompt: `Change hairstyle to ${style}. Keep same face, same identity, realistic, natural lighting.`,
+      size: "1024x1024",
+    });
 
-      const image_base64 = response.data[0].b64_json;
-      const image_url = `data:image/png;base64,${image_base64}`;
+    const imageData = response.data[0];
 
-      return res.status(200).json({
-        image: image_url
-      });
+    if (!imageData) {
+      console.error("BRAK DATA:", response);
+      return res.status(500).json({ error: "Brak odpowiedzi z AI" });
+    }
+
+    // 🔥 obsługa obu przypadków (b64 / url)
+    let imageUrl;
+
+    if (imageData.b64_json) {
+      imageUrl = `data:image/png;base64,${imageData.b64_json}`;
+    } else if (imageData.url) {
+      imageUrl = imageData.url;
+    } else {
+      console.error("BRAK OBRAZU:", response);
+      return res.status(500).json({ error: "AI nie zwróciło obrazu" });
+    }
+
+    return res.status(200).json({
+      image: imageUrl,
     });
 
   } catch (err) {
     console.error("ERROR:", err);
+
     return res.status(500).json({
-      error: err.message
+      error: err.message || "Server error",
     });
   }
 }

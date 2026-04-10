@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 export default async function handler(req, res) {
-  // CORS (Shopify)
+  // ✅ CORS (Shopify / frontend)
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -20,54 +20,32 @@ export default async function handler(req, res) {
     console.log("REQUEST:", { style });
 
     if (!image) {
-      return res.status(400).json({ error: "Brak zdjęcia" });
+      return res.status(400).json({
+        error: "Brak zdjęcia"
+      });
     }
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const response = await openai.responses.create({
-      model: "gpt-4.1",
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: `Change hairstyle to ${style}. Keep same face, same person, realistic photo.`
-            },
-            {
-              type: "input_image",
-              image_url: image
-            }
-          ]
-        }
-      ]
+    // 🔥 GENEROWANIE OBRAZU
+    const result = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: `Change hairstyle to ${style}. Keep same face, same person, realistic photo, high quality.`,
+      image: image, // base64 z frontendu
+      size: "1024x1024"
     });
 
-    // 🔥 SZUKAMY OBRAZU W ODPOWIEDZI (odporne na błędy)
-    let image_base64 = null;
-
-    for (const item of response.output) {
-      if (item.content) {
-        for (const c of item.content) {
-          if (c.type === "output_image" && c.image_base64) {
-            image_base64 = c.image_base64;
-          }
-        }
-      }
-    }
-
-    if (!image_base64) {
-      console.error("BRAK OBRAZU:", JSON.stringify(response, null, 2));
+    if (!result.data || !result.data[0]?.url) {
+      console.error("BRAK OBRAZU:", result);
       return res.status(500).json({
         error: "AI nie zwróciło obrazu"
       });
     }
 
     return res.status(200).json({
-      image: `data:image/png;base64,${image_base64}`
+      image: result.data[0].url
     });
 
   } catch (err) {

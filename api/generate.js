@@ -1,40 +1,59 @@
-import OpenAI from "openai";
-import fetch from "node-fetch";
-import { File } from "node:buffer";
+import OpenAI, { toFile } from "openai";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 export default async function handler(req, res) {
+  // ✅ CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST allowed" });
+  }
 
   try {
-    // 🔥 prosty URL (na stałe)
-    const imageUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9";
+    const { image } = req.body;
 
-    const response = await fetch(imageUrl);
-    const arrayBuffer = await response.arrayBuffer();
+    if (!image) {
+      return res.status(400).json({ error: "Brak zdjęcia" });
+    }
 
-    const file = new File([arrayBuffer], "image.png", {
+    // 🔥 pobieramy obraz z URL
+    const response = await fetch(image);
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    // 🔥 konwersja do pliku dla OpenAI
+    const file = await toFile(buffer, "input.png", {
       type: "image/png",
     });
 
+    // 🔥 AI zmienia fryzurę
     const result = await client.images.edit({
-      model: "gpt-image-1.5",
-      image: [file],
-      prompt: "Nowoczesna fryzura fade, realistyczna",
+      model: "gpt-image-1",
+      image: file,
+      prompt:
+        "Change ONLY the hairstyle of the person, keep same face, same person, realistic photo, natural lighting",
+      size: "1024x1024",
     });
-
-    const base64 = result.data[0].b64_json;
 
     return res.status(200).json({
-      image: `data:image/png;base64,${base64}`,
+      image: `data:image/png;base64,${result.data[0].b64_json}`,
     });
 
-  } catch (e) {
+  } catch (err) {
+    console.error("ERROR:", err);
     return res.status(500).json({
-      error: e.message,
+      error: err.message,
+    });
+  }
+}      error: e.message,
     });
   }
 }

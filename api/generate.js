@@ -37,7 +37,7 @@ export default async function handler(req, res) {
             },
             {
               type: "input_image",
-              image: image
+              image_url: image   // 🔥 TU BYŁ BŁĄD
             }
           ]
         }

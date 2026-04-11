@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   const prompty = [
    
-    "zmień tylko włosy na długie blond",
+    "znajdź włosy i zmień je na długie blond",
    
   ];
 

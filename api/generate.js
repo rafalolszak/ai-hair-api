@@ -20,8 +20,9 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-    "zmień kolor włosów na blond",
-    "zmień fryzure na klasyczny bob"
+    "zmień tylko kolor włosów na czarny",
+    "zmień tylko włosy na długie blond",
+    "zmień tylko włosy na rude falowane"
   ];
 
   try {

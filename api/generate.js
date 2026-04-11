@@ -8,7 +8,8 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image } = req.body;
+  // Odbieramy image oraz prompt (zmieniony na userPrompt, żeby nie mylić z pętlą)
+  const { image, prompt: userPrompt } = req.body;
 
   // Sprawdzenie czy zdjęcie dotarło
   if (!image) {
@@ -19,22 +20,32 @@ export default async function handler(req, res) {
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
-  const prompty = [
-   
-    "znajdź włosy i zmień je na proste blond",
-   
-  ];
+  // LOGIKA PROMPTÓW:
+  // Jeśli użytkownik wpisał coś w okienko, używamy tylko tego.
+  // Jeśli pole jest puste, używamy Twojej domyślnej listy.
+  let promptyDoWykonania = [];
+
+  if (userPrompt && userPrompt.trim().length > 0) {
+    // Możesz dodać tu stałe frazy wzmacniające jakość, np. "realistic, 8k"
+    promptyDoWykonania = [userPrompt]; 
+  } else {
+    promptyDoWykonania = [
+      "znajdź włosy i zmień je na proste blond",
+      // Tutaj możesz dopisać więcej domyślnych fryzur, np.:
+      // "shorter hair, dark brown color",
+      // "curly hairstyle, red hair"
+    ];
+  }
 
   try {
     const wyniki = [];
 
-    for (const p of prompty) {
-      // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
+    for (const p of promptyDoWykonania) {
       const output = await replicate.run(
         "google/nano-banana",
         {
           input: {
-            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
+            "image_input": [image], 
             "prompt": p
           }
         }
@@ -57,7 +68,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("BŁĄD REPLICATE:", error.message);
-    // Zwracamy konkretny błąd do Shopify, żebyś widział go w konsoli
     return res.status(500).json({ 
       error: "Błąd Replicate: " + error.message,
       stack: error.stack 

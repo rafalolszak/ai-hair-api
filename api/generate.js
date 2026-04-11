@@ -20,8 +20,8 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-    "long straight hair style",
-    "short curly pink hair"
+    "zmień włosy na klasyczny bob",
+    "zmień włosy na clean girl"
   ];
 
   try {

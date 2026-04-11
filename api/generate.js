@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         "google/nano-banana",
         {
           input: {
-            "image_input": image, // Wysyłamy bezpośrednio jako string (bez [])
+            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
             "prompt": p
           }
         }

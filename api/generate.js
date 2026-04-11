@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     for (const p of prompty) {
       // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
       const output = await replicate.run(
-        "google/nano-banana:aba390731f24d142d765f0ed179f82d00160b5e39be33834a36f4520e5c9a70f",
+        "google/nano-banana",
         {
           input: {
             "image_input": image, // Wysyłamy bezpośrednio jako string (bez [])

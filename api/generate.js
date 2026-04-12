@@ -33,13 +33,13 @@ export default async function handler(req, res) {
       .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
       .map(key => ({
         label: key,
-        fullPrompt: `${hairDictionary[key]}, ${details}, highly detailed, realistic, 8k, don't change anything except the hairstyle`
+        fullPrompt: `${hairDictionary[key]}, ${details}, highly detailed, realistic, 8k, nie zmieniaj pozycji twarzy`
       }));
   }
 
   // Fallback
   if (promptyDoWykonania.length === 0) {
-    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt || "natural beautiful hairstyle" }];
+    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt }];
   }
 
   try {

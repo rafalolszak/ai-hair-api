@@ -15,17 +15,7 @@ export default async function handler(req, res) {
 
   // --- MAPA STAŁYCH PROMPTÓW ---
   const hairDictionary = {
-    "Straight": "make hair very straight, sleek, smooth, high fashion style",
-    "Bob": "transform hairstyle into a classic bob",
-    "Pixie Cut": "change hair to a very short pixie cut, feminine style",
-    "Layered": "add many layers to the hair, voluminous layered haircut",
-    "Wavy": "make hair wavy, beach waves style, soft natural curls",
-    "Messy Bun": "style hair into a casual messy bun on top of the head",
-    "Side-Swept Pixie": "short side-swept pixie haircut, modern look",
-    "High Ponytail": "style hair into a high sleek ponytail",
-    "Low Ponytail": "style hair into a elegant low ponytail",
-    "Dutch Braid": "transform hair into a professional dutch braid style",
-    "Space Buns": "style hair into two cute space buns on sides"
+   
   };
 
   let promptyDoWykonania = [];

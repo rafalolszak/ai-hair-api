@@ -1,7 +1,6 @@
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  // Nagłówki CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -18,44 +17,39 @@ export default async function handler(req, res) {
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
-  // --- LOGIKA ROZBICIA PROMPTU ---
   let promptyDoWykonania = [];
   let additionalDetails = "";
 
+  // Rozbijanie promptu z frontendu
   if (rawPrompt && rawPrompt.includes("Styles:")) {
-    // Wyciągamy to co jest między "Styles:" a "Details:"
     const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
-    // Wyciągamy dodatkowe uwagi użytkownika
     additionalDetails = rawPrompt.split('Details:')[1]?.trim() || "";
-
-    // Tworzymy tablicę wybranych fryzur
     const wybraneStyle = stylesPart.split(',').map(s => s.trim()).filter(s => s !== "");
 
     if (wybraneStyle.length > 0) {
-      // Dla każdego zaznaczonego stylu tworzymy osobny, pełny prompt dla AI
-      promptyDoWykonania = wybraneStyle.map(style => 
-        `high quality photo of a person with ${style} hairstyle, ${additionalDetails}, photorealistic, 8k`
-      );
+      promptyDoWykonania = wybraneStyle.map(style => ({
+        displayTag: style, // zachowujemy krótką nazwę do wyświetlenia
+        fullPrompt: `high quality photo of a person with ${style} hairstyle, ${additionalDetails}, photorealistic, 8k`
+      }));
     }
   } 
 
-  // Jeśli tablica nadal jest pusta (użytkownik nic nie kliknął, tylko wpisał tekst)
   if (promptyDoWykonania.length === 0) {
-    const fallbackPrompt = rawPrompt || "znajdź włosy i zmień je na proste blond";
-    promptyDoWykonania = [fallbackPrompt];
+    promptyDoWykonania = [{
+      displayTag: "Metamorfoza",
+      fullPrompt: rawPrompt || "znajdź włosy i zmień je na proste blond"
+    }];
   }
 
   try {
-    const wyniki = [];
-
-    // Pętla wykonuje się tyle razy, ile stylów zaznaczył użytkownik
-    for (const p of promptyDoWykonania) {
+    // KLUCZOWA ZMIANA: Wysyłamy wszystkie zapytania naraz (równolegle)
+    const obietniceGeneracji = promptyDoWykonania.map(async (item) => {
       const output = await replicate.run(
-        "google/nano-banana", // Upewnij się, że to poprawny model do edycji włosów
+        "google/nano-banana",
         {
           input: {
             "image_input": [image], 
-            "prompt": p
+            "prompt": item.fullPrompt
           }
         }
       );
@@ -69,16 +63,18 @@ export default async function handler(req, res) {
         finalUrl = typeof output.url === 'function' ? output.url() : output.url;
       }
 
-      // prompt w wynikach to nazwa konkretnej fryzury, żeby frontend mógł ją podpisać
-      wyniki.push({ prompt: p, url: finalUrl });
-    }
+      return { prompt: item.displayTag, url: finalUrl };
+    });
+
+    // Czekamy aż wszystkie zapytania wrócą
+    const wyniki = await Promise.all(obietniceGeneracji);
 
     return res.status(200).json(wyniki);
 
   } catch (error) {
     console.error("BŁĄD REPLICATE:", error.message);
     return res.status(500).json({ 
-      error: "Błąd Replicate: " + error.message
+      error: "Błąd: " + error.message
     });
   }
 }

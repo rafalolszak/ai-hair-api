@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   // --- MAPA STAŁYCH PROMPTÓW ---
   const hairDictionary = {
     "Straight": "make hair very straight, sleek, smooth, high fashion style",
-    "Bob": "transform hairstyle into a classic chic bob cut, chin length",
+    "Bob": "transform hairstyle into a classic bob",
     "Pixie Cut": "change hair to a very short pixie cut, feminine style",
     "Layered": "add many layers to the hair, voluminous layered haircut",
     "Wavy": "make hair wavy, beach waves style, soft natural curls",

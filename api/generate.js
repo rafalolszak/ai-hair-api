@@ -9,72 +9,73 @@ export default async function handler(req, res) {
 
   const { image, prompt: rawPrompt } = req.body;
 
-  if (!image) {
-    return res.status(400).json({ error: "Serwer nie otrzymał zdjęcia." });
-  }
+  if (!image) return res.status(400).json({ error: "Brak zdjęcia." });
 
-  const replicate = new Replicate({
-    auth: process.env.REPLICATE_API_TOKEN,
-  });
+  const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+
+  // --- MAPA STAŁYCH PROMPTÓW ---
+  const hairDictionary = {
+    "Straight": "make hair very straight, sleek, smooth, high fashion style",
+    "Bob": "transform hairstyle into a classic chic bob cut, chin length",
+    "Pixie Cut": "change hair to a very short pixie cut, feminine style",
+    "Layered": "add many layers to the hair, voluminous layered haircut",
+    "Wavy": "make hair wavy, beach waves style, soft natural curls",
+    "Messy Bun": "style hair into a casual messy bun on top of the head",
+    "Side-Swept Pixie": "short side-swept pixie haircut, modern look",
+    "High Ponytail": "style hair into a high sleek ponytail",
+    "Low Ponytail": "style hair into a elegant low ponytail",
+    "Dutch Braid": "transform hair into a professional dutch braid style",
+    "Space Buns": "style hair into two cute space buns on sides"
+  };
 
   let promptyDoWykonania = [];
-  let additionalDetails = "";
 
-  // Rozbijanie promptu z frontendu
   if (rawPrompt && rawPrompt.includes("Styles:")) {
+    // 1. Wyciągamy nazwy fryzur (np. "Straight, Bob")
     const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
-    additionalDetails = rawPrompt.split('Details:')[1]?.trim() || "";
-    const wybraneStyle = stylesPart.split(',').map(s => s.trim()).filter(s => s !== "");
+    const selectedKeys = stylesPart.split(',').map(s => s.trim());
+    
+    // 2. Wyciągamy dodatki (np. "blond")
+    const details = rawPrompt.split('Details:')[1]?.trim() || "";
 
-    if (wybraneStyle.length > 0) {
-      promptyDoWykonania = wybraneStyle.map(style => ({
-        displayTag: style, // zachowujemy krótką nazwę do wyświetlenia
-        fullPrompt: `high quality photo of a person with ${style} hairstyle, ${additionalDetails}, photorealistic, 8k`
+    // 3. Budujemy listę zadań na podstawie słownika
+    promptyDoWykonania = selectedKeys
+      .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
+      .map(key => ({
+        label: key,
+        fullPrompt: `${hairDictionary[key]}, ${details}, highly detailed, realistic, 8k`
       }));
-    }
-  } 
+  }
 
+  // Fallback
   if (promptyDoWykonania.length === 0) {
-    promptyDoWykonania = [{
-      displayTag: "Metamorfoza",
-      fullPrompt: rawPrompt || "znajdź włosy i zmień je na proste blond"
-    }];
+    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt || "natural beautiful hairstyle" }];
   }
 
   try {
-    // KLUCZOWA ZMIANA: Wysyłamy wszystkie zapytania naraz (równolegle)
-    const obietniceGeneracji = promptyDoWykonania.map(async (item) => {
+    // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
+    const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
       const output = await replicate.run(
         "google/nano-banana",
         {
           input: {
-            "image_input": [image], 
+            "image_input": [image],
             "prompt": item.fullPrompt
           }
         }
       );
 
-      let finalUrl = "";
-      if (Array.isArray(output)) {
-        finalUrl = output[0];
-      } else if (typeof output === 'string') {
-        finalUrl = output;
-      } else if (output?.url) {
-        finalUrl = typeof output.url === 'function' ? output.url() : output.url;
-      }
+      let url = Array.isArray(output) ? output[0] : (output?.url || output);
+      if (typeof url === 'function') url = url();
 
-      return { prompt: item.displayTag, url: finalUrl };
+      return { prompt: item.label, url: url };
     });
 
-    // Czekamy aż wszystkie zapytania wrócą
-    const wyniki = await Promise.all(obietniceGeneracji);
-
+    const wyniki = await Promise.all(generationPromises);
     return res.status(200).json(wyniki);
 
   } catch (error) {
-    console.error("BŁĄD REPLICATE:", error.message);
-    return res.status(500).json({ 
-      error: "Błąd: " + error.message
-    });
+    console.error("BŁĄD:", error.message);
+    return res.status(500).json({ error: error.message });
   }
 }

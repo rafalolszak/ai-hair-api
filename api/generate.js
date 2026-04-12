@@ -1,64 +1,81 @@
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  // CORS - Pozwalamy na komunikację z Twoim sklepem
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image, prompt } = req.body;
+  const { image, prompt: rawPrompt } = req.body;
 
-  if (!image || !prompt) {
-    return res.status(400).json({ error: "Brak zdjęcia lub opisu fryzury." });
+  if (!image) return res.status(400).json({ error: "Brak zdjęcia." });
+
+  const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+
+  // --- MAPA STAŁYCH PROMPTÓW ---
+  const hairDictionary = {
+    "Straight": "make hair very straight, sleek, smooth, high fashion style",
+    "Bob": "transform hairstyle into a classic chic bob cut, chin length",
+    "Pixie Cut": "change hair to a very short pixie cut, feminine style",
+    "Layered": "add many layers to the hair, voluminous layered haircut",
+    "Wavy": "make hair wavy, beach waves style, soft natural curls",
+    "Messy Bun": "style hair into a casual messy bun on top of the head",
+    "Side-Swept Pixie": "short side-swept pixie haircut, modern look",
+    "High Ponytail": "style hair into a high sleek ponytail",
+    "Low Ponytail": "style hair into a elegant low ponytail",
+    "Dutch Braid": "transform hair into a professional dutch braid style",
+    "Space Buns": "style hair into two cute space buns on sides"
+  };
+
+  let promptyDoWykonania = [];
+
+  if (rawPrompt && rawPrompt.includes("Styles:")) {
+    // 1. Wyciągamy nazwy fryzur (np. "Straight, Bob")
+    const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
+    const selectedKeys = stylesPart.split(',').map(s => s.trim());
+    
+    // 2. Wyciągamy dodatki (np. "blond")
+    const details = rawPrompt.split('Details:')[1]?.trim() || "";
+
+    // 3. Budujemy listę zadań na podstawie słownika
+    promptyDoWykonania = selectedKeys
+      .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
+      .map(key => ({
+        label: key,
+        fullPrompt: `${hairDictionary[key]}, ${details}, highly detailed, realistic, 8k`
+      }));
+  }
+
+  // Fallback
+  if (promptyDoWykonania.length === 0) {
+    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt || "natural beautiful hairstyle" }];
   }
 
   try {
-    const replicate = new Replicate({
-      auth: process.env.REPLICATE_API_TOKEN,
+    // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
+    const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
+      const output = await replicate.run(
+        "google/nano-banana",
+        {
+          input: {
+            "image_input": [image],
+            "prompt": item.fullPrompt
+          }
+        }
+      );
+
+      let url = Array.isArray(output) ? output[0] : (output?.url || output);
+      if (typeof url === 'function') url = url();
+
+      return { prompt: item.label, url: url };
     });
 
-    // Model nano-banana przyjmuje tablicę obrazów. 
-    // Upewniamy się, że obraz jest w poprawnym formacie.
-    const output = await replicate.run(
-      "google/nano-banana",
-      {
-        input: {
-          image_input: [image], // Przekazujemy zdjęcie (URL lub Base64)
-          prompt: prompt,       // Np. "sleek straight long hair, blonde color"
-        },
-      }
-    );
-
-    // Wyciąganie URL zdjęcia z odpowiedzi Replicate
-    let imageUrl = "";
-    if (Array.isArray(output)) {
-      imageUrl = output[0];
-    } else if (typeof output === "string") {
-      imageUrl = output;
-    } else {
-      imageUrl = output?.url || (typeof output?.output === 'string' ? output.output : output?.output?.[0]);
-    }
-
-    // Obsługa nietypowych formatów (funkcja/stream)
-    if (typeof imageUrl === "function") imageUrl = imageUrl();
-    if (imageUrl && typeof imageUrl !== 'string' && imageUrl.toString) imageUrl = imageUrl.toString();
-
-    if (!imageUrl) {
-      console.error("Błąd formatu wyjściowego:", JSON.stringify(output));
-      throw new Error("Model nie wygenerował poprawnego adresu URL zdjęcia.");
-    }
-
-    // Zwracamy czysty wynik do frontendu
-    return res.status(200).json({ url: imageUrl });
+    const wyniki = await Promise.all(generationPromises);
+    return res.status(200).json(wyniki);
 
   } catch (error) {
-    console.error("Błąd serwera (Replicate):", error.message);
-    return res.status(500).json({
-      error: "AI ma teraz dużo pracy, spróbuj ponownie za chwilę.",
-      details: error.message
-    });
+    console.error("BŁĄD:", error.message);
+    return res.status(500).json({ error: error.message });
   }
 }

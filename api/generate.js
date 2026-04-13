@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
       .map(key => ({
         label: key,
-        fullPrompt: `${hairDictionary[key]}, ${details}, nie zmieniaj pozycji twarzy, zachowaj ten sam wygląd twarzy`
+       fullPrompt: `change hairstyle to ${hairDictionary[key]}, ${details}, maintain same face, don't change face features, photorealistic`
       }));
   }
 

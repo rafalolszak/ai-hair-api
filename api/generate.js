@@ -20,9 +20,7 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-   
-    "zmień włosy na długie proste",
-    "zmień włosy na klasyczny bob"
+"Edit this photo: change ONLY the hairstyle to classic bob. Do NOT change the face, eyes, eyebrows, nose, lips, skin, body, lighting, background, or camera angle. Preserve identity exactly. The person must look identical. High identity preservation. No face changes allowed."
    
   ];
 

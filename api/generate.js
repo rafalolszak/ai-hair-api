@@ -1,71 +1,66 @@
- import Replicate from "replicate";
+import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Nagłówki CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image, prompt: rawPrompt } = req.body;
+  const { image } = req.body;
 
-  if (!image) return res.status(400).json({ error: "Brak zdjęcia." });
+  // Sprawdzenie czy zdjęcie dotarło
+  if (!image) {
+    return res.status(400).json({ error: "Serwer nie otrzymał zdjęcia." });
+  }
 
-  const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+  const replicate = new Replicate({
+    auth: process.env.REPLICATE_API_TOKEN,
+  });
 
-  // --- MAPA STAŁYCH PROMPTÓW ---
-  const hairDictionary = {
-   
-  };
+  const prompty = [
+   
+    "znajdź włosy i zmień je na proste blond",
+   
+  ];
 
-  let promptyDoWykonania = [];
+  try {
+    const wyniki = [];
 
-  if (rawPrompt && rawPrompt.includes("Styles:")) {
-    // 1. Wyciągamy nazwy fryzur (np. "Straight, Bob")
-    const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
-    const selectedKeys = stylesPart.split(',').map(s => s.trim());
-    
-    // 2. Wyciągamy dodatki (np. "blond")
-    const details = rawPrompt.split('Details:')[1]?.trim() || "";
+    for (const p of prompty) {
+      // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
+      const output = await replicate.run(
+        "google/nano-banana",
+        {
+          input: {
+            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
+            "prompt": p
+          }
+        }
+      );
 
-    // 3. Budujemy listę zadań na podstawie słownika
-    promptyDoWykonania = selectedKeys
-      .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
-      .map(key => ({
-        label: key,
-       fullPrompt: `change hairstyle to ${hairDictionary[key]}, ${details}, maintain same face, don't change face features, photorealistic`
-      }));
-  }
+      // Wyciąganie URL w bezpieczny sposób
+      let finalUrl = "";
+      if (Array.isArray(output)) {
+        finalUrl = output[0];
+      } else if (output && typeof output === 'string') {
+        finalUrl = output;
+      } else if (output && output.url) {
+        finalUrl = typeof output.url === 'function' ? output.url() : output.url;
+      }
 
-  // Fallback
-  if (promptyDoWykonania.length === 0) {
-    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt }];
-  }
+      wyniki.push({ prompt: p, url: finalUrl });
+    }
 
-  try {
-    // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
-    const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
-      const output = await replicate.run(
-        "google/nano-banana",
-        {
-          input: {
-            "image_input": [image],
-            "prompt": item.fullPrompt
-          }
-        }
-      );
+    return res.status(200).json(wyniki);
 
-      let url = Array.isArray(output) ? output[0] : (output?.url || output);
-      if (typeof url === 'function') url = url();
-
-      return { prompt: item.label, url: url };
-    });
-
-    const wyniki = await Promise.all(generationPromises);
-    return res.status(200).json(wyniki);
-
-  } catch (error) {
-    console.error("BŁĄD:", error.message);
-    return res.status(500).json({ error: error.message });
-  }
+  } catch (error) {
+    console.error("BŁĄD REPLICATE:", error.message);
+    // Zwracamy konkretny błąd do Shopify, żebyś widział go w konsoli
+    return res.status(500).json({ 
+      error: "Błąd Replicate: " + error.message,
+      stack: error.stack 
+    });
+  }
 }

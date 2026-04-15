@@ -1,7 +1,6 @@
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  // Nagłówki CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -9,58 +8,45 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { image } = req.body;
-
-  // Sprawdzenie czy zdjęcie dotarło
-  if (!image) {
-    return res.status(400).json({ error: "Serwer nie otrzymał zdjęcia." });
-  }
+  if (!image) return res.status(400).json({ error: "Brak zdjęcia" });
 
   const replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
+  // Tutaj wpisz wszystkie swoje prompty
   const prompty = [
-   
-    "znajdź włosy i zmień je na proste blond",
-   
+    "change hairstyle to classic bob, high quality",
+    "change hairstyle to long straight blonde hair, high quality",
+    "change hairstyle to curtain bangs, high quality",
+    "change hairstyle to soft waves, high quality"
   ];
 
   try {
     const wyniki = [];
 
+    // Generowanie POJEDYNCZO (jeden po drugim)
     for (const p of prompty) {
-      // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
       const output = await replicate.run(
-        "google/nano-banana",
+        "timothybrooks/instruct-pix2pix:df0a50759051030e4635a968644558e0a75d9703487053e1a81284d720235964",
         {
           input: {
-            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
-            "prompt": p
+            image: image,
+            prompt: p,
+            num_inference_steps: 25
           }
         }
       );
 
-      // Wyciąganie URL w bezpieczny sposób
-      let finalUrl = "";
-      if (Array.isArray(output)) {
-        finalUrl = output[0];
-      } else if (output && typeof output === 'string') {
-        finalUrl = output;
-      } else if (output && output.url) {
-        finalUrl = typeof output.url === 'function' ? output.url() : output.url;
-      }
-
+      let finalUrl = Array.isArray(output) ? output[0] : (output?.url || output);
       wyniki.push({ prompt: p, url: finalUrl });
     }
 
+    // Wysyłka całej paczki po zakończeniu pętli
     return res.status(200).json(wyniki);
 
   } catch (error) {
-    console.error("BŁĄD REPLICATE:", error.message);
-    // Zwracamy konkretny błąd do Shopify, żebyś widział go w konsoli
-    return res.status(500).json({ 
-      error: "Błąd Replicate: " + error.message,
-      stack: error.stack 
-    });
+    console.error("Błąd:", error.message);
+    return res.status(500).json({ error: error.message });
   }
 }

@@ -8,60 +8,45 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image } = req.body;
+  // Odbieramy zdjęcie ORAZ prompt przesłany z frontendu
+  const { image, prompt } = req.body;
 
-  // Sprawdzenie czy zdjęcie dotarło
-  if (!image) {
-    return res.status(400).json({ error: "Serwer nie otrzymał zdjęcia." });
+  if (!image || !prompt) {
+    return res.status(400).json({ error: "Brak zdjęcia lub treści promptu." });
   }
 
   const replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
-  const prompty = [
-   
-    "znajdź włosy i zmień je na proste blond",
-     "znajdź włosy i zmień je na klasyczny bob",
-   
-  ];
-
   try {
-    const wyniki = [];
-
-    for (const p of prompty) {
-      // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
-      const output = await replicate.run(
-        "google/nano-banana",
-        {
-          input: {
-            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
-            "prompt": p
-          }
+    // Generujemy tylko JEDNO zdjęcie dla otrzymanego promptu
+    const output = await replicate.run(
+      "timothybrooks/instruct-pix2pix:df0a50759051030e4635a968644558e0a75d9703487053e1a81284d720235964",
+      {
+        input: {
+          image: image,
+          prompt: prompt, // Tutaj trafia to, co wysłał frontend
+          num_inference_steps: 25
         }
-      );
-
-      // Wyciąganie URL w bezpieczny sposób
-      let finalUrl = "";
-      if (Array.isArray(output)) {
-        finalUrl = output[0];
-      } else if (output && typeof output === 'string') {
-        finalUrl = output;
-      } else if (output && output.url) {
-        finalUrl = typeof output.url === 'function' ? output.url() : output.url;
       }
+    );
 
-      wyniki.push({ prompt: p, url: finalUrl });
+    // Wyciągamy URL zdjęcia (obsługa różnych formatów Replicate)
+    let finalUrl = "";
+    if (Array.isArray(output)) {
+      finalUrl = output[0];
+    } else if (typeof output === 'string') {
+      finalUrl = output;
+    } else if (output && output.url) {
+      finalUrl = typeof output.url === 'function' ? output.url() : output.url;
     }
 
-    return res.status(200).json(wyniki);
+    // Zwracamy pojedynczy wynik
+    return res.status(200).json({ url: finalUrl });
 
   } catch (error) {
     console.error("BŁĄD REPLICATE:", error.message);
-    // Zwracamy konkretny błąd do Shopify, żebyś widział go w konsoli
-    return res.status(500).json({ 
-      error: "Błąd Replicate: " + error.message,
-      stack: error.stack 
-    });
+    return res.status(500).json({ error: error.message });
   }
 }

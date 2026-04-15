@@ -20,7 +20,16 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-"Edit this photo: change ONLY the hairstyle to classic bob. Do NOT change the face, eyes, eyebrows, nose, lips, skin, body, lighting, background, or camera angle. Preserve identity exactly. The person must look identical. High identity preservation. No face changes allowed."
+"change hairstyle to classic bob"
+"change hairstyle to long straight hair"
+"change hairstyle to softwaves"
+"change hairstyle to curtain bungs"
+"change hairstyle to slidepart"
+"change hairstyle to hightponytail"
+"change hairstyle to layered shag
+"change hairstyle to french braid"
+"change hairstyle to blond baleyage"
+"zmień kolor włosów na rudę"
    
   ];
 

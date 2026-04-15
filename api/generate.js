@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       "timothybrooks/instruct-pix2pix:df0a50759051030e4635a968644558e0a75d9703487053e1a81284d720235964",
       {
         input: {
-          image: image,
+          "image_input": [image],
           prompt: prompt, // Tutaj trafia to, co wysłał frontend
           num_inference_steps: 25
         }

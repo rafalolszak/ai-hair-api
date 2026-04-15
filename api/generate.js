@@ -20,16 +20,16 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-  "change hairstyle to classic bob",
-  "change hairstyle to long straight hair",
-  "change hairstyle to softwaves",
-  "change hairstyle to curtain bangs",
-  "change hairstyle to sidepart",
-  "change hairstyle to high ponytail",
-  "change hairstyle to layered shag",
-  "change hairstyle to french braid",
-  "change hairstyle to blond balayage",
-  // "zmień kolor włosów na rude"
+  "change hairstyle to classic bob,do not change the face position",
+  "change hairstyle to long straight hair, do not change the face position",
+  // "change hairstyle to softwaves, do not change the face position",
+  // "change hairstyle to curtain bangs, do not change the face position",
+  // "change hairstyle to sidepart, do not change the face position",
+  // "change hairstyle to high ponytail, do not change the face position",
+  // "change hairstyle to layered shag, do not change the face position",
+  // "change hairstyle to french braid, do not change the face position",
+  // "change hairstyle to blond balayage, do not change the face position",
+  // "zmień kolor włosów na rude, do not change the face position"
 ];
    
 

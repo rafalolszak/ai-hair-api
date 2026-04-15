@@ -21,14 +21,14 @@ export default async function handler(req, res) {
 
   const prompty = [
   "change hairstyle to classic bob",
-  // "change hairstyle to long straight hair",
-  // "change hairstyle to softwaves",
-  // "change hairstyle to curtain bangs",
-  // "change hairstyle to sidepart",
-  // "change hairstyle to high ponytail",
-  // "change hairstyle to layered shag",
-  // "change hairstyle to french braid",
-  // "change hairstyle to blond balayage",
+  "change hairstyle to long straight hair",
+  "change hairstyle to softwaves",
+  "change hairstyle to curtain bangs",
+  "change hairstyle to sidepart",
+  "change hairstyle to high ponytail",
+  "change hairstyle to layered shag",
+  "change hairstyle to french braid",
+  "change hairstyle to blond balayage",
   // "zmień kolor włosów na rude"
 ];
    

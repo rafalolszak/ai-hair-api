@@ -8,59 +8,54 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image } = req.body;
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "Metoda niedozwolona" });
+  }
 
-  // Sprawdzenie czy zdjęcie dotarło
-  if (!image) {
-    return res.status(400).json({ error: "Serwer nie otrzymał zdjęcia." });
+  // Odbieramy zdjęcie ORAZ konkretny prompt wysłany z frontendu
+  const { image, prompt } = req.body;
+
+  if (!image || !prompt) {
+    return res.status(400).json({ error: "Brak zdjęcia lub treści promptu." });
   }
 
   const replicate = new Replicate({
     auth: process.env.REPLICATE_API_TOKEN,
   });
 
-  const prompty = [
-   
-    "znajdź włosy i zmień je na proste blond",
-    "znajdź włosy i zmień je na klasycznybob",
-  ];
-
   try {
-    const wyniki = [];
-
-    for (const p of prompty) {
-      // Zmieniamy strukturę zapytania na taką, którą Replicate akceptuje najlepiej
-      const output = await replicate.run(
-        "google/nano-banana",
-        {
-          input: {
-            "image_input": [image], // Wysyłamy bezpośrednio jako string (bez [])
-            "prompt": p
-          }
+    // Generujemy TYLKO JEDEN wynik dla otrzymanego promptu
+    // Używamy modelu instruct-pix2pix, który najlepiej radzi sobie z edycją zdjęć
+    const output = await replicate.run(
+      "timothybrooks/instruct-pix2pix:df0a50759051030e4635a968644558e0a75d9703487053e1a81284d720235964",
+      {
+        input: {
+          image: image,
+          prompt: prompt,
+          num_inference_steps: 25,
+          image_guidance_scale: 1.5,
+          guidance_scale: 7.5
         }
-      );
-
-      // Wyciąganie URL w bezpieczny sposób
-      let finalUrl = "";
-      if (Array.isArray(output)) {
-        finalUrl = output[0];
-      } else if (output && typeof output === 'string') {
-        finalUrl = output;
-      } else if (output && output.url) {
-        finalUrl = typeof output.url === 'function' ? output.url() : output.url;
       }
+    );
 
-      wyniki.push({ prompt: p, url: finalUrl });
+    // Wyciąganie URL w bezpieczny sposób (Replicate zwraca URL lub tablicę z URL)
+    let finalUrl = "";
+    if (Array.isArray(output)) {
+      finalUrl = output[0];
+    } else if (typeof output === 'string') {
+      finalUrl = output;
+    } else if (output && output.url) {
+      finalUrl = typeof output.url === 'function' ? output.url() : output.url;
     }
 
-    return res.status(200).json(wyniki);
+    // Zwracamy pojedynczy obiekt z URL, którego spodziewa się frontend
+    return res.status(200).json({ url: finalUrl });
 
   } catch (error) {
     console.error("BŁĄD REPLICATE:", error.message);
-    // Zwracamy konkretny błąd do Shopify, żebyś widział go w konsoli
     return res.status(500).json({ 
-      error: "Błąd Replicate: " + error.message,
-      stack: error.stack 
+      error: "Błąd serwera: " + error.message 
     });
   }
 }

@@ -18,8 +18,8 @@ export default async function handler(req, res) {
   });
 
   const prompty = [
-    "change hairstyle to straight blonde hair",
-    "change hairstyle to classic bob cut"
+    "change hairstyle to straight blonde hair"
+    
   ];
 
   try {

@@ -1,22 +1,16 @@
 import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  // Nagłówki CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Metoda niedozwolona" });
-  }
-
-  // Odbieramy zdjęcie ORAZ konkretny prompt wysłany z frontendu
   const { image, prompt } = req.body;
 
   if (!image || !prompt) {
-    return res.status(400).json({ error: "Brak zdjęcia lub treści promptu." });
+    return res.status(400).json({ error: "Brak zdjęcia lub promptu." });
   }
 
   const replicate = new Replicate({
@@ -24,22 +18,23 @@ export default async function handler(req, res) {
   });
 
   try {
-    // Generujemy TYLKO JEDEN wynik dla otrzymanego promptu
-    // Używamy modelu instruct-pix2pix, który najlepiej radzi sobie z edycją zdjęć
+    // KLUCZOWE: Niektóre modele Replicate nie przyjmują nagłówka "data:image/..."
+    // Jeśli image zawiera przecinek, bierzemy tylko to, co po nim (czysty base64)
+    const cleanImage = image.includes(",") ? image.split(",")[1] : image;
+    
+    // Tworzymy poprawny format URI dla Replicate
+    const imageUri = `data:application/octet-stream;base64,${cleanImage}`;
+
     const output = await replicate.run(
-      "timothybrooks/instruct-pix2pix:df0a50759051030e4635a968644558e0a75d9703487053e1a81284d720235964",
+      "google/nano-banana", // Upewnij się na 100%, że to jest poprawny ID modelu
       {
         input: {
-          "image_input": [image],
-          prompt: prompt,
-          num_inference_steps: 25,
-          image_guidance_scale: 1.5,
-          guidance_scale: 7.5
+          "image_input": [imageUri], // Tablica zgodnie z Twoją dokumentacją
+          "prompt": prompt
         }
       }
     );
 
-    // Wyciąganie URL w bezpieczny sposób (Replicate zwraca URL lub tablicę z URL)
     let finalUrl = "";
     if (Array.isArray(output)) {
       finalUrl = output[0];
@@ -49,13 +44,10 @@ export default async function handler(req, res) {
       finalUrl = typeof output.url === 'function' ? output.url() : output.url;
     }
 
-    // Zwracamy pojedynczy obiekt z URL, którego spodziewa się frontend
     return res.status(200).json({ url: finalUrl });
 
   } catch (error) {
-    console.error("BŁĄD REPLICATE:", error.message);
-    return res.status(500).json({ 
-      error: "Błąd serwera: " + error.message 
-    });
+    console.error("BŁĄD:", error.message);
+    return res.status(500).json({ error: error.message });
   }
 }

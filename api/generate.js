@@ -24,12 +24,12 @@ export default async function handler(req, res) {
 "change hairstyle to long straight hair"
 "change hairstyle to softwaves"
 "change hairstyle to curtain bungs"
-"change hairstyle to slidepart"
-"change hairstyle to hightponytail"
-"change hairstyle to layered shag
-"change hairstyle to french braid"
-"change hairstyle to blond baleyage"
-"zmień kolor włosów na rudę"
+// "change hairstyle to slidepart"
+// "change hairstyle to hightponytail"
+// "change hairstyle to layered shag
+// "change hairstyle to french braid"
+// "change hairstyle to blond baleyage"
+// "zmień kolor włosów na rudę"
    
   ];
 

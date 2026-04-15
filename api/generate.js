@@ -25,11 +25,11 @@ export default async function handler(req, res) {
   "change hairstyle to softwaves, do not change the face position",
   "change hairstyle to curtain bangs, do not change the face position",
   "change hairstyle to sidepart, do not change the face position",
-  "change hairstyle to high ponytail, do not change the face position",
-  "change hairstyle to layered shag, do not change the face position",
-  "change hairstyle to french braid, do not change the face position",
-  "change hairstyle to blond balayage, do not change the face position",
-  "zmień kolor włosów na rude, do not change the face position"
+  // "change hairstyle to high ponytail, do not change the face position",
+  // "change hairstyle to layered shag, do not change the face position",
+  // "change hairstyle to french braid, do not change the face position",
+  // "change hairstyle to blond balayage, do not change the face position",
+  // "zmień kolor włosów na rude, do not change the face position"
 ];
    
 

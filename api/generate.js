@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   // "zmień kolor włosów na rude"
 ];
    
-  ];
+
 
   try {
     const wyniki = [];

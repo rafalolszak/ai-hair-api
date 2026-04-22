@@ -1,4 +1,4 @@
-
+3
  import Replicate from "replicate";
 
 export default async function handler(req, res) {
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
     const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
       const output = await replicate.run(
-        "google/nano-banana",
+        "bytedance/seedream-4.5",
         {
           input: {
             "image_input": [image],

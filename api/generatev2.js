@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
     const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
       const output = await replicate.run(
-        "bytedance/seedream-4.5",
+        "google/nano-banana",
         {
           input: {
             "image_input": [image],

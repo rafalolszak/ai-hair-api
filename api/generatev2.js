@@ -1,72 +1,81 @@
-
- import Replicate from "replicate";
+import Replicate from "replicate";
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Nagłówki CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { image, prompt: rawPrompt } = req.body;
+  const { image, prompt: rawPrompt } = req.body;
 
-  if (!image) return res.status(400).json({ error: "Brak zdjęcia." });
+  if (!image) return res.status(400).json({ error: "Brak zdjęcia." });
 
-  const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
+  const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN });
 
-  // --- MAPA STAŁYCH PROMPTÓW ---
-  const hairDictionary = {
-   
-  };
+  // UZUPEŁNIJ SŁOWNIK: np. "Bob": "short bob hairstyle"
+  const hairDictionary = {
+    "Bob": "short bob hairstyle",
+    "Wavy": "wavy hairstyle",
+    // Dodaj resztę swoich fryzur tutaj
+  };
 
-  let promptyDoWykonania = [];
+  let promptyDoWykonania = [];
 
-  if (rawPrompt && rawPrompt.includes("Styles:")) {
-    // 1. Wyciągamy nazwy fryzur (np. "Straight, Bob")
-    const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
-    const selectedKeys = stylesPart.split(',').map(s => s.trim());
-    
-    // 2. Wyciągamy dodatki (np. "blond")
-    const details = rawPrompt.split('Details:')[1]?.trim() || "";
+  if (rawPrompt && rawPrompt.includes("Styles:")) {
+    const stylesPart = rawPrompt.split('Details:')[0].replace('Styles:', '').trim();
+    const selectedKeys = stylesPart.split(',').map(s => s.trim());
+    const details = rawPrompt.split('Details:')[1]?.trim() || "";
 
-    // 3. Budujemy listę zadań na podstawie słownika
-    promptyDoWykonania = selectedKeys
-      .filter(key => hairDictionary[key]) // bierzemy tylko te, które mamy w słowniku
-      .map(key => ({
-        label: key,
-       fullPrompt: `change hairstyle to ${hairDictionary[key]}, ${details}, Nie zmieniaj jej twarzy.`
-      }));
-  }
+    promptyDoWykonania = selectedKeys
+      .filter(key => hairDictionary[key]) 
+      .map(key => ({
+        label: key,
+        fullPrompt: `Change hairstyle to ${hairDictionary[key]}, ${details}. Nie zmieniaj jej twarzy.`
+      }));
+  }
 
-  // Fallback
-  if (promptyDoWykonania.length === 0) {
-    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt }];
-  }
+  if (promptyDoWykonania.length === 0) {
+    promptyDoWykonania = [{ label: "Custom", fullPrompt: rawPrompt }];
+  }
 
-  try {
-    // Wysyłamy wszystkie zapytania naraz (równolegle), żeby nie wyrzuciło błędu czasu
-    const generationPromises = promptyDoWykonania.slice(0, 3).map(async (item) => { // limit do 3 naraz dla bezpieczeństwa
-      const output = await replicate.run(
-        "google/nano-banana",
-        {
-          input: {
-            "image_input": [image],
-            "prompt": item.fullPrompt
-          }
-        }
-      );
+  try {
+    const generationPromises = promptyDoWykonania.slice(0, 1).map(async (item) => {
+      console.log("Wysyłam prompt do Replicate:", item.fullPrompt);
+      
+      const output = await replicate.run(
+        "bytedance/seedream-4.5",
+        {
+          input: {
+            "image_input": [image],
+            "prompt": item.fullPrompt,
+            "aspect_ratio": "16:9"
+          }
+        }
+      );
 
-      let url = Array.isArray(output) ? output[0] : (output?.url || output);
-      if (typeof url === 'function') url = url();
+      console.log("Surowy output z Replicate:", JSON.stringify(output));
 
-      return { prompt: item.label, url: url };
-    });
+      // Obsługa formatu zwracanego przez model (instrukcja .url())
+      let url = "";
+      if (Array.isArray(output) && output.length > 0) {
+        url = typeof output[0].url === 'function' ? output[0].url() : output[0].url;
+      } else if (output && typeof output.url === 'function') {
+        url = output.url();
+      } else {
+        url = output; // Fallback
+      }
 
-    const wyniki = await Promise.all(generationPromises);
-    return res.status(200).json(wyniki);
+      return { prompt: item.label, url: url };
+    });
 
-  } catch (error) {
-    console.error("BŁĄD:", error.message);
-    return res.status(500).json({ error: error.message });
-  }
+    const wyniki = await Promise.all(generationPromises);
+    console.log("Wynik wysyłany do frontendu:", wyniki);
+    return res.status(200).json(wyniki);
+
+  } catch (error) {
+    console.error("BŁĄD BACKEND:", error);
+    return res.status(500).json({ error: error.message });
+  }
 }

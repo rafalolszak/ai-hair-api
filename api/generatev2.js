@@ -1,4 +1,4 @@
-3
+
  import Replicate from "replicate";
 
 export default async function handler(req, res) {

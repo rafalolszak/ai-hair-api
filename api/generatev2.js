@@ -50,7 +50,7 @@ export default async function handler(req, res) {
           input: {
             "image_input": [image],
             "prompt": item.fullPrompt,
-            "aspect_ratio": "16:9"
+            "aspect_ratio": "match_input_image"
           }
         }
       );

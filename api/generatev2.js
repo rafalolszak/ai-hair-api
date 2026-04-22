@@ -16,8 +16,7 @@ export default async function handler(req, res) {
 
   // UZUPEŁNIJ SŁOWNIK: np. "Bob": "short bob hairstyle"
   const hairDictionary = {
-    "Bob": "short bob hairstyle",
-    "Wavy": "wavy hairstyle",
+    
     // Dodaj resztę swoich fryzur tutaj
   };
 
@@ -50,7 +49,8 @@ export default async function handler(req, res) {
           input: {
             "image_input": [image],
             "prompt": item.fullPrompt,
-            "aspect_ratio": "match_input_image"
+            "aspect_ratio": "match_input_image",
+             "size": "2K",
           }
         }
       );

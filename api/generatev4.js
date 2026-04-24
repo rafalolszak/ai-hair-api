@@ -18,39 +18,35 @@ export default async function handler(req, res) {
   });
 
   try {
-    // KLUCZOWE: Niektóre modele Replicate nie przyjmują nagłówka "data:image/..."
-    // Jeśli image zawiera przecinek, bierzemy tylko to, co po nim (czysty base64)
-    const cleanImage = image.includes(",") ? image.split(",")[1] : image;
+    // Seedream wymaga, aby obraz był przekazany w formacie, który Replicate rozumie
+    // Często najlepiej działa przesłanie czystego base64 (z nagłówkiem data:image/jpeg;base64,...)
+    // lub bezpośrednio jako string.
     
-    // Tworzymy poprawny format URI dla Replicate
-    const imageUri = `data:application/octet-stream;base64,${cleanImage}`;
-
     const output = await replicate.run(
-        "bytedance/seedream-4.5",
-        {
-          input: {
-            "image_input": [image],
-            "prompt": prompt,
-            "aspect_ratio": "match_input_image",
-             "size": "2K"
-          }
+      "bytedance/seedream-4.5", 
+      {
+        input: {
+          image_input: [image], // Model wymaga tablicy (array)
+          prompt: prompt,
+          size: "2K",
+          aspect_ratio: "match_input_image",
+          sequential_image_generation: "disabled"
         }
+      }
     );
-    
 
+    // Obsługa wyjścia modelu (Seedream zwraca URL obrazu)
     let finalUrl = "";
     if (Array.isArray(output)) {
       finalUrl = output[0];
-    } else if (typeof output === 'string') {
+    } else {
       finalUrl = output;
-    } else if (output && output.url) {
-      finalUrl = typeof output.url === 'function' ? output.url() : output.url;
     }
 
     return res.status(200).json({ url: finalUrl });
 
   } catch (error) {
-    console.error("BŁĄD:", error.message);
+    console.error("BŁĄD REPLICATE:", error);
     return res.status(500).json({ error: error.message });
   }
 }

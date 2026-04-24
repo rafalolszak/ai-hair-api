@@ -26,14 +26,17 @@ export default async function handler(req, res) {
     const imageUri = `data:application/octet-stream;base64,${cleanImage}`;
 
     const output = await replicate.run(
-      "google/nano-banana", // Upewnij się na 100%, że to jest poprawny ID modelu
-      {
-        input: {
-          "image_input": [imageUri], // Tablica zgodnie z Twoją dokumentacją
-          "prompt": prompt
+        "bytedance/seedream-4.5",
+        {
+          input: {
+            "image_input": [image],
+            "prompt": item.fullPrompt,
+            "aspect_ratio": "match_input_image",
+             "size": "2K"
+          }
         }
-      }
     );
+    
 
     let finalUrl = "";
     if (Array.isArray(output)) {
